@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { 
   Box, 
@@ -25,6 +25,7 @@ interface TabPanelProps {
 
 function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
+
   return (
     <div
       role="tabpanel"
@@ -42,7 +43,8 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-export default function Home() {
+// This component uses searchParams and is wrapped in Suspense
+function HomeContent() {
   const [value, setValue] = React.useState(0);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -68,6 +70,70 @@ export default function Home() {
     window.history.pushState({}, '', url);
   };
 
+  return (
+    <>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs 
+          value={value} 
+          onChange={handleChange} 
+          variant={isMobile ? 'fullWidth' : 'standard'}
+          centered={!isMobile}
+          aria-label="bill search and upload tabs"
+        >
+          <Tab 
+            icon={<SearchIcon sx={{ mr: 1 }} />} 
+            iconPosition="start"
+            label="Search Bills" 
+            id="tab-0" 
+          />
+          <Tab 
+            icon={<UploadFileIcon sx={{ mr: 1 }} />}
+            iconPosition="start"
+            label="Upload Bill" 
+            id="tab-1"
+          />
+        </Tabs>
+      </Box>
+      
+      <TabPanel value={value} index={0}>
+        <BillSearch />
+      </TabPanel>
+      
+      <TabPanel value={value} index={1}>
+        <BillUpload />
+      </TabPanel>
+    </>
+  );
+}
+
+// Fallback while loading
+function HomeFallback() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
+  return (
+    <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+      <Tabs 
+        value={0} 
+        variant={isMobile ? 'fullWidth' : 'standard'}
+        centered={!isMobile}
+      >
+        <Tab 
+          icon={<SearchIcon sx={{ mr: 1 }} />} 
+          iconPosition="start"
+          label="Search Bills" 
+        />
+        <Tab 
+          icon={<UploadFileIcon sx={{ mr: 1 }} />}
+          iconPosition="start" 
+          label="Upload Bill" 
+        />
+      </Tabs>
+    </Box>
+  );
+}
+
+export default function Home() {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
       {/* Hero Section */}
@@ -115,45 +181,12 @@ export default function Home() {
           borderColor: 'divider',
           mx: 'auto',
           maxWidth: 900,
+          p: { xs: 2, sm: 3 },
         }}
       >
-        <Tabs
-          value={value}
-          onChange={handleChange}
-          variant="fullWidth"
-          textColor="primary"
-          indicatorColor="primary"
-          aria-label="Legal AI Tool Tabs"
-          sx={{ 
-            borderBottom: 1, 
-            borderColor: 'divider',
-            bgcolor: 'background.default',
-            '& .MuiTab-root': {
-              py: 2,
-              fontWeight: 600,
-            },
-          }}
-        >
-          <Tab 
-            label={isMobile ? "Search" : "Search Bills"} 
-            icon={<SearchIcon />} 
-            iconPosition="start"
-          />
-          <Tab 
-            label={isMobile ? "Upload" : "Upload Bill"} 
-            icon={<UploadFileIcon />} 
-            iconPosition="start"
-          />
-        </Tabs>
-            
-        <Box sx={{ p: { xs: 2, sm: 3 } }}>
-          <TabPanel value={value} index={0}>
-            <BillSearch />
-          </TabPanel>
-          <TabPanel value={value} index={1}>
-            <BillUpload />
-          </TabPanel>
-        </Box>
+        <Suspense fallback={<HomeFallback />}>
+          <HomeContent />
+        </Suspense>
       </Paper>
 
       {/* Features Section */}
@@ -232,10 +265,10 @@ export default function Home() {
             }}
           >
             <Typography variant="h6" gutterBottom>
-              Legal Insights
+              AI Insights
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Get key insights and summaries that help you understand complex legal language and implications.
+              Leverage advanced AI models to extract key points, analyze implications, and generate recommendations.
             </Typography>
           </Paper>
         </Box>

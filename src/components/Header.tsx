@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -30,17 +30,129 @@ const navigation = [
   { name: 'About', href: '/about' },
 ];
 
-export function Header() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const pathname = usePathname();
+// This component uses searchParams and is wrapped in Suspense
+function NavItems({ pathname, isMobile, handleDrawerToggle }: { 
+  pathname: string; 
+  isMobile: boolean;
+  handleDrawerToggle?: () => void;
+}) {
   const searchParams = useSearchParams();
   const [isClient, setIsClient] = useState(false);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
 
   // Set isClient to true when component mounts
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Function to check if a navigation item is active
+  const isNavItemActive = (itemHref: string) => {
+    if (pathname === itemHref) return true;
+    
+    if (isClient && itemHref.includes('?tab=') && pathname === '/') {
+      const tabParam = searchParams.get('tab');
+      const itemTab = itemHref.split('=')[1];
+      return tabParam === itemTab;
+    }
+    
+    return false;
+  };
+
+  if (isMobile) {
+    return (
+      <List sx={{ mt: 2 }}>
+        {navigation.map((item) => (
+          <ListItem key={item.name} disablePadding>
+            <ListItemButton
+              component={Link}
+              href={item.href}
+              selected={isNavItemActive(item.href)}
+              onClick={handleDrawerToggle}
+              sx={{
+                py: 1.5,
+                px: 3,
+                borderRadius: 0,
+                '&.Mui-selected': {
+                  bgcolor: 'rgba(37, 99, 235, 0.1)',
+                  color: 'primary.main',
+                  fontWeight: 600,
+                },
+              }}
+            >
+              <ListItemText primary={item.name} />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+    );
+  }
+  
+  return (
+    <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
+      {navigation.map((item) => {
+        const isActive = isNavItemActive(item.href);
+        return (
+          <Link key={item.name} href={item.href} style={{ textDecoration: 'none' }}>
+            <Button
+              variant="text"
+              sx={{
+                color: isActive ? 'primary.main' : 'text.primary',
+                fontWeight: isActive ? 600 : 500,
+                position: 'relative',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: 5,
+                  left: '50%',
+                  width: isActive ? '30%' : 0,
+                  height: 2,
+                  bgcolor: 'primary.main',
+                  transform: 'translateX(-50%)',
+                  transition: 'width 0.3s ease',
+                },
+                '&:hover::after': {
+                  width: '30%',
+                },
+              }}
+            >
+              {item.name}
+            </Button>
+          </Link>
+        );
+      })}
+    </Box>
+  );
+}
+
+// Fallback component shown during suspense
+function NavItemsFallback({ isMobile }: { isMobile: boolean }) {
+  if (isMobile) {
+    return <List sx={{ mt: 2 }}></List>;
+  }
+  
+  return (
+    <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
+      {navigation.map((item) => (
+        <Link key={item.name} href={item.href} style={{ textDecoration: 'none' }}>
+          <Button
+            variant="text"
+            sx={{
+              color: 'text.primary',
+              fontWeight: 500,
+              position: 'relative',
+            }}
+          >
+            {item.name}
+          </Button>
+        </Link>
+      ))}
+    </Box>
+  );
+}
+
+export function Header() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -61,19 +173,6 @@ export function Header() {
     disableHysteresis: true,
     threshold: 10,
   });
-
-  // Function to check if a navigation item is active
-  const isNavItemActive = (itemHref: string) => {
-    if (pathname === itemHref) return true;
-    
-    if (isClient && itemHref.includes('?tab=') && pathname === '/') {
-      const tabParam = searchParams.get('tab');
-      const itemTab = itemHref.split('=')[1];
-      return tabParam === itemTab;
-    }
-    
-    return false;
-  };
 
   return (
     <>
@@ -124,40 +223,10 @@ export function Header() {
               </Link>
             </Box>
 
-            {/* Desktop menu */}
-            <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
-              {navigation.map((item) => {
-                const isActive = isNavItemActive(item.href);
-                return (
-                  <Link key={item.name} href={item.href} style={{ textDecoration: 'none' }}>
-                    <Button
-                      variant="text"
-                      sx={{
-                        color: isActive ? 'primary.main' : 'text.primary',
-                        fontWeight: isActive ? 600 : 500,
-                        position: 'relative',
-                        '&::after': {
-                          content: '""',
-                          position: 'absolute',
-                          bottom: 5,
-                          left: '50%',
-                          width: isActive ? '30%' : 0,
-                          height: 2,
-                          bgcolor: 'primary.main',
-                          transform: 'translateX(-50%)',
-                          transition: 'width 0.3s ease',
-                        },
-                        '&:hover::after': {
-                          width: '30%',
-                        },
-                      }}
-                    >
-                      {item.name}
-                    </Button>
-                  </Link>
-                );
-              })}
-            </Box>
+            {/* Desktop menu with Suspense */}
+            <Suspense fallback={<NavItemsFallback isMobile={false} />}>
+              <NavItems pathname={pathname} isMobile={false} />
+            </Suspense>
 
             <Box sx={{ display: { xs: 'none', md: 'block' }, ml: 2 }}>
               <Button
@@ -248,41 +317,26 @@ export function Header() {
           </IconButton>
         </Box>
 
-        <List sx={{ mt: 2 }}>
-          {navigation.map((item) => (
-            <ListItem key={item.name} disablePadding>
-              <ListItemButton
-                component={Link}
-                href={item.href}
-                selected={isNavItemActive(item.href)}
-                onClick={handleDrawerToggle}
-                sx={{
-                  py: 1.5,
-                  px: 3,
-                  borderRadius: 0,
-                  '&.Mui-selected': {
-                    bgcolor: 'rgba(37, 99, 235, 0.1)',
-                    color: 'primary.main',
-                    fontWeight: 600,
-                  },
-                }}
-              >
-                <ListItemText primary={item.name} />
-              </ListItemButton>
-            </ListItem>
-          ))}
-          <ListItem sx={{ mt: 2 }}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleLoginClick}
-              fullWidth
-              sx={{ py: 1.5 }}
-            >
-              Log in
-            </Button>
-          </ListItem>
-        </List>
+        {/* Mobile navigation items with Suspense */}
+        <Suspense fallback={<NavItemsFallback isMobile={true} />}>
+          <NavItems 
+            pathname={pathname} 
+            isMobile={true} 
+            handleDrawerToggle={handleDrawerToggle}
+          />
+        </Suspense>
+        
+        <ListItem sx={{ mt: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleLoginClick}
+            fullWidth
+            sx={{ py: 1.5 }}
+          >
+            Log in
+          </Button>
+        </ListItem>
       </Drawer>
       
       {/* Work in progress message */}
